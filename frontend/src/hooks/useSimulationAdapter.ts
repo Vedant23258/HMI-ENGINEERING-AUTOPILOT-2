@@ -70,11 +70,21 @@ export function useSimulationAdapter() {
   const [isSimRunning, setIsSimRunning] = useState(false);
   const [events, setEvents] = useState<SimEvent[]>([]);
   const connRef = useRef<SimulationConnection | null>(null);
+  const pendingScenarioRef = useRef<FaultScenario | null>(null);
+
+  function applyServerScenario(next: unknown) {
+    const serverScenario = (next as FaultScenario | undefined) ?? "NORMAL";
+    if (pendingScenarioRef.current && pendingScenarioRef.current !== serverScenario) {
+      return;
+    }
+    pendingScenarioRef.current = null;
+    setScenario(serverScenario);
+  }
 
   useEffect(() => {
     const conn = simulationSocket((data) => {
       setTags(data.tags ?? {});
-      setScenario((data.scenario as FaultScenario) ?? "NORMAL");
+      applyServerScenario(data.scenario);
     });
     connRef.current = conn;
     return () => conn.close();
@@ -91,7 +101,7 @@ export function useSimulationAdapter() {
         const snapshot = await api.simulationState();
         if (cancelled) return;
         setTags(snapshot.tags ?? {});
-        setScenario((snapshot.scenario as FaultScenario) ?? "NORMAL");
+        applyServerScenario(snapshot.scenario);
         setIsSimRunning(snapshot.running);
       } catch {
         /* the API helper displays a concise connection error */
@@ -163,9 +173,17 @@ export function useSimulationAdapter() {
   }
 
   async function injectFault(id: FaultScenario) {
-    await api.simulationScenario(id);
-    setIsSimRunning(true);
-    await refreshValidation();
+    pendingScenarioRef.current = id;
+    setScenario(id);
+    try {
+      const res = await api.simulationScenario(id);
+      setScenario((res.scenario as FaultScenario) ?? id);
+      setTags(res.tags ?? {});
+      setIsSimRunning(true);
+      await refreshValidation();
+    } finally {
+      pendingScenarioRef.current = null;
+    }
   }
 
   function addEvent() {
