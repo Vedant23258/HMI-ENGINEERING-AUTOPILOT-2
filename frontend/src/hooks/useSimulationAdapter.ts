@@ -203,8 +203,13 @@ export function useSimulationAdapter() {
       }
       const res = await api.simulationScenario(id);
       if (requestSeq !== scenarioRequestSeqRef.current) return;
-      setAuthoritativeScenario((res.scenario as FaultScenario) ?? id);
-      setTags(res.tags ?? {});
+      // The clicked id is authoritative. A serverless invocation can land on
+      // another warm instance whose old scenario is NORMAL; never let that
+      // stale response undo the operator's current selection.
+      setAuthoritativeScenario(id);
+      if (res.scenario === id) {
+        setTags(res.tags ?? {});
+      }
       // Fault injection is a runtime operation. Do not call the full
       // validation endpoint here: that endpoint intentionally evaluates every
       // scenario and can reset the simulator to NORMAL while the operator is
