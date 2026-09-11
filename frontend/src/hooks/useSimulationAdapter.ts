@@ -71,9 +71,14 @@ export function useSimulationAdapter() {
   const [events, setEvents] = useState<SimEvent[]>([]);
   const connRef = useRef<SimulationConnection | null>(null);
   const pendingScenarioRef = useRef<FaultScenario | null>(null);
+  const scenarioRequestSeqRef = useRef(0);
+  const hasUserSelectedScenarioRef = useRef(false);
 
   function applyServerScenario(next: unknown) {
     const serverScenario = (next as FaultScenario | undefined) ?? "NORMAL";
+    if (hasUserSelectedScenarioRef.current) {
+      return;
+    }
     if (pendingScenarioRef.current && pendingScenarioRef.current !== serverScenario) {
       return;
     }
@@ -173,16 +178,26 @@ export function useSimulationAdapter() {
   }
 
   async function injectFault(id: FaultScenario) {
+    const requestSeq = scenarioRequestSeqRef.current + 1;
+    scenarioRequestSeqRef.current = requestSeq;
+    hasUserSelectedScenarioRef.current = true;
     pendingScenarioRef.current = id;
     setScenario(id);
+    setIsSimRunning(true);
     try {
+      if (!isSimRunning) {
+        await api.simulationStart();
+        if (requestSeq !== scenarioRequestSeqRef.current) return;
+      }
       const res = await api.simulationScenario(id);
+      if (requestSeq !== scenarioRequestSeqRef.current) return;
       setScenario((res.scenario as FaultScenario) ?? id);
       setTags(res.tags ?? {});
-      setIsSimRunning(true);
       await refreshValidation();
     } finally {
-      pendingScenarioRef.current = null;
+      if (requestSeq === scenarioRequestSeqRef.current) {
+        pendingScenarioRef.current = null;
+      }
     }
   }
 

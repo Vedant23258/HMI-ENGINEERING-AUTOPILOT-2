@@ -134,13 +134,7 @@ export function VirtualHmi() {
                   return (
                     <button
                       key={s.id}
-                      onClick={() => {
-                        if (isSimRunning) injectFault(s.id);
-                        else {
-                          startSimulation();
-                          setTimeout(() => injectFault(s.id), 300);
-                        }
-                      }}
+                      onClick={() => void injectFault(s.id)}
                       className="w-full flex items-start gap-2 p-2 rounded-sm text-left transition-all"
                       style={{
                         background: active ? mix(s.color, 10) : PANEL_2,
