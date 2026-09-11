@@ -274,6 +274,8 @@ export const api = {
       { method: "POST", body: JSON.stringify({ project_id, scenario }) }
     ),
 
+  simulationState: () => req<SimulationSnapshot>("/simulation/state"),
+
   getValidation: (project_id = "demo") => req<ValidationResult>(`/validation?project_id=${project_id}`),
 
   autofix: (project_id = "demo") =>
@@ -397,6 +399,13 @@ export interface LogAnalysis {
   fault_events: LogEvent[];
   scenario_change_count: number;
   recent_events: LogEvent[];
+}
+
+export interface SimulationSnapshot {
+  scenario: string;
+  state: Record<string, unknown>;
+  tags: Record<string, unknown>;
+  running: boolean;
 }
 
 export interface SimulationConnection {

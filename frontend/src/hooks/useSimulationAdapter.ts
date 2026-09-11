@@ -80,6 +80,31 @@ export function useSimulationAdapter() {
     return () => conn.close();
   }, []);
 
+  // Vercel Functions do not support this app's WebSocket stream. Poll the
+  // same simulation model as a fallback so deployed Virtual HMI pages still
+  // display current tag values. Locally this is also a safe backup if the
+  // development WebSocket briefly disconnects.
+  useEffect(() => {
+    let cancelled = false;
+    async function pollState() {
+      try {
+        const snapshot = await api.simulationState();
+        if (cancelled) return;
+        setTags(snapshot.tags ?? {});
+        setScenario((snapshot.scenario as FaultScenario) ?? "NORMAL");
+        setIsSimRunning(snapshot.running);
+      } catch {
+        /* the API helper displays a concise connection error */
+      }
+    }
+    pollState();
+    const timer = setInterval(pollState, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function poll() {

@@ -166,6 +166,26 @@ def simulation_scenario(req: ScenarioRequest):
     return {"scenario": req.scenario, "state": state, "tags": simulator.as_tags()}
 
 
+@router.get("/simulation/state")
+def simulation_state():
+    """Return a simulation snapshot for serverless deployments.
+
+    Vercel Functions do not keep WebSocket connections open. The browser uses
+    this lightweight endpoint as a polling fallback, so the Virtual HMI works
+    in production as well as during local WebSocket development.
+    """
+    # A local process advances state in its broadcast loop. In a serverless
+    # function invocation there is no durable loop, so advance once per poll.
+    if simulator.is_running:
+        simulator.tick()
+    return {
+        "scenario": simulator.scenario,
+        "state": simulator.state,
+        "tags": simulator.as_tags(),
+        "running": simulator.is_running,
+    }
+
+
 @router.websocket("/ws/simulation")
 async def ws_simulation(ws: WebSocket):
     await ws.accept()

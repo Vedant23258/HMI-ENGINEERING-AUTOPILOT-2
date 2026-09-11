@@ -167,6 +167,25 @@ pytest tests/ -v
 invented tags), structural + behavioral + scenario validation, and the
 self-correction cycle (including the bounded-retry guarantee).
 
+### Deploy the full stack on Vercel
+
+This repository is configured as one Vercel project, not as a frontend-only
+site: Vercel builds `frontend/` into the static app and deploys
+`api/index.py` as the FastAPI serverless function behind `/api/*`.
+
+1. Import this GitHub repository in Vercel and keep the project root as the
+   repository root.
+2. Deploy with the checked-in `vercel.json`; no separate frontend or backend
+   project is needed.
+3. Optionally set `ANTHROPIC_API_KEY`, `LLM_PROVIDER`, and `MODEL` in Vercel
+   Project Settings → Environment Variables. Without a key the app uses its
+   built-in deterministic mock planner.
+
+The Virtual HMI automatically polls `/api/simulation/state` on Vercel because
+Vercel Functions do not provide persistent WebSocket connections. The rest of
+the API is served normally. Generated export files use Vercel's temporary
+filesystem and are therefore available only for the active function instance.
+
 ## 8. Environment variables
 
 See `.env.example`:

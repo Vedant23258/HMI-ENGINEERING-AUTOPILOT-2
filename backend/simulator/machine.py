@@ -67,6 +67,7 @@ class MachineSimulator:
         self.state: dict = dict(DEFAULT_STATE)
         self.scenario = "NORMAL"
         self._task: asyncio.Task | None = None
+        self._running = False
         self._subscribers: list[Callable[[dict], Awaitable[None]]] = []
         # Real event log of this simulator's own state transitions -- not
         # synthetic/fabricated data, it's generated live by this process.
@@ -140,13 +141,19 @@ class MachineSimulator:
             await asyncio.sleep(1.0)
 
     def start(self):
+        self._running = True
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._broadcast_loop())
 
     def stop(self):
+        self._running = False
         if self._task:
             self._task.cancel()
             self._task = None
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
 
 
 simulator = MachineSimulator()
