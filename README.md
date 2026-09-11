@@ -176,7 +176,9 @@ site: Vercel builds `frontend/` into the static app and deploys
 1. Import this GitHub repository in Vercel and keep the project root as the
    repository root.
 2. Deploy with the checked-in `vercel.json`; no separate frontend or backend
-   project is needed.
+   project is needed. The frontend install runs with `cd frontend && npm ci`,
+   and Python dependencies are declared in `pyproject.toml` for Vercel's
+   Python runtime.
 3. Optionally set `ANTHROPIC_API_KEY`, `LLM_PROVIDER`, and `MODEL` in Vercel
    Project Settings → Environment Variables. Without a key the app uses its
    built-in deterministic mock planner.

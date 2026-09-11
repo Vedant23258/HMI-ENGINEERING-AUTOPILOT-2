@@ -1,0 +1,14 @@
+[project]
+name = "hmi-engineering-autopilot-2"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.9.0",
+  "networkx>=3.3",
+  "websockets>=13.0",
+  "python-multipart>=0.0.9",
+  "anthropic>=0.34.0",
+  "httpx>=0.27.0",
+]
