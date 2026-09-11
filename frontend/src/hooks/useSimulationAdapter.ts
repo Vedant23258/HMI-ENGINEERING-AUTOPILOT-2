@@ -64,7 +64,7 @@ function toSimEvent(e: LogEvent, i: number): SimEvent {
 }
 
 export function useSimulationAdapter() {
-  const { project, refreshValidation } = useProject();
+  const { project } = useProject();
   const [tags, setTags] = useState<Record<string, unknown>>({});
   const [scenario, setScenario] = useState<FaultScenario>("NORMAL");
   const [isSimRunning, setIsSimRunning] = useState(false);
@@ -73,6 +73,12 @@ export function useSimulationAdapter() {
   const pendingScenarioRef = useRef<FaultScenario | null>(null);
   const scenarioRequestSeqRef = useRef(0);
   const hasUserSelectedScenarioRef = useRef(false);
+  const scenarioRef = useRef<FaultScenario>("NORMAL");
+
+  function setAuthoritativeScenario(next: FaultScenario) {
+    scenarioRef.current = next;
+    setScenario(next);
+  }
 
   function applyServerScenario(next: unknown) {
     const serverScenario = (next as FaultScenario | undefined) ?? "NORMAL";
@@ -83,12 +89,16 @@ export function useSimulationAdapter() {
       return;
     }
     pendingScenarioRef.current = null;
-    setScenario(serverScenario);
+    setAuthoritativeScenario(serverScenario);
   }
 
   useEffect(() => {
     const conn = simulationSocket((data) => {
-      setTags(data.tags ?? {});
+      // Once the operator has selected a fault, an old WebSocket frame must
+      // never repaint the machine with another scenario's tags.
+      if (!hasUserSelectedScenarioRef.current || data.scenario === scenarioRef.current) {
+        setTags(data.tags ?? {});
+      }
       applyServerScenario(data.scenario);
     });
     connRef.current = conn;
@@ -105,7 +115,9 @@ export function useSimulationAdapter() {
       try {
         const snapshot = await api.simulationState();
         if (cancelled) return;
-        setTags(snapshot.tags ?? {});
+        if (!hasUserSelectedScenarioRef.current || snapshot.scenario === scenarioRef.current) {
+          setTags(snapshot.tags ?? {});
+        }
         applyServerScenario(snapshot.scenario);
         setIsSimRunning(snapshot.running);
       } catch {
@@ -182,7 +194,7 @@ export function useSimulationAdapter() {
     scenarioRequestSeqRef.current = requestSeq;
     hasUserSelectedScenarioRef.current = true;
     pendingScenarioRef.current = id;
-    setScenario(id);
+    setAuthoritativeScenario(id);
     setIsSimRunning(true);
     try {
       if (!isSimRunning) {
@@ -191,9 +203,12 @@ export function useSimulationAdapter() {
       }
       const res = await api.simulationScenario(id);
       if (requestSeq !== scenarioRequestSeqRef.current) return;
-      setScenario((res.scenario as FaultScenario) ?? id);
+      setAuthoritativeScenario((res.scenario as FaultScenario) ?? id);
       setTags(res.tags ?? {});
-      await refreshValidation();
+      // Fault injection is a runtime operation. Do not call the full
+      // validation endpoint here: that endpoint intentionally evaluates every
+      // scenario and can reset the simulator to NORMAL while the operator is
+      // switching faults.
     } finally {
       if (requestSeq === scenarioRequestSeqRef.current) {
         pendingScenarioRef.current = null;
